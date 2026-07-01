@@ -1,16 +1,37 @@
-# React + Vite
+👤 담당 역할 (정병민)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**로그인/로그아웃 · 회원가입 · 비밀번호 찾기** 화면과 인증 로직을 단독으로 설계·구현했습니다. 팀원이 각자 자신의 파트를 구현한 공용 화면인 **마이페이지**에서는 프로필·정산계좌 탭을 담당했습니다.
 
-Currently, two official plugins are available:
+### 담당 도메인 한눈에 보기
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| 영역 | 파일 |
+|---|---|
+| 인증 | `authApi.js`, `AuthPages.jsx` |
+| 마이페이지 *(담당 파트)* | `myPageApi.js`, `UserProfilePage.jsx` |
 
-## React Compiler
+### 파일별 구현 내용
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `authApi.js` — 로그인/회원가입/로그아웃 API 호출, 토큰 저장(sessionStorage), 만료 임박 시 자동 재발급 및 401 처리하는 axios 인터셉터
+- `AuthPages.jsx` — 로그인/회원가입/비밀번호 찾기 화면, 아이디·닉네임 중복확인 실시간 검증, 회원가입 약관 동의 처리
+- `myPageApi.js` — 마이페이지 프로필·정산계좌·주문 등 조회 API 래퍼 (`authRequest` 기반 인증 요청)
+- `UserProfilePage.jsx` — 마이페이지 전체 탭 구조, 프로필 수정·이미지 업로드, 정산계좌 등록/수정 UI
 
-## Expanding the ESLint configuration
+### 핵심 구현: 토큰 관리 & 자동 재발급
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+토큰 만료로 인한 불필요한 로그아웃을 막기 위해 axios 레벨에서 자동 재발급 흐름을 구현했습니다.
+
+- Access Token은 `sessionStorage`에 저장, Refresh Token은 서버가 심어주는 `HttpOnly` 쿠키에 위임(JS에서 직접 다루지 않음)
+- 만료 10초 전부터 `/api/auth/refresh` 자동 호출 후 원래 요청을 새 토큰으로 1회 재시도
+- 재발급까지 실패하면 세션을 모두 정리하고 로그인 페이지로 강제 이동, 중복 alert 방지 플래그 처리
+- 로그인 상태 변경 시 `storage` 이벤트를 발생시켜 헤더 등 다른 컴포넌트가 즉시 갱신되도록 처리
+
+### 회원가입 / 비밀번호 찾기 UX
+
+- 아이디·닉네임 입력 시 실시간 중복확인 API 호출로 즉시 피드백 제공
+- 비밀번호 찾기는 아이디 확인 후 발급된 임시 비밀번호를 안내하는 흐름으로 구성
+
+### 마이페이지 (담당 파트)
+
+- 프로필 수정, 프로필 이미지 업로드/삭제 (`FormData` 전송)
+- 정산계좌 등록/수정: 예금주명은 서버에서 실명으로 고정되므로 프론트에서는 은행/계좌번호만 입력받도록 UI 제한
+- 로그인 세션(`nailed_session`)에서 회원 ID를 읽어 본인 데이터만 조회하도록 API 호출 구성
